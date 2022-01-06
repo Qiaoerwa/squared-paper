@@ -1,0 +1,277 @@
+<!--
+ * @Description: 
+ * @Autor: fylih
+ * @Date: 2021-07-27 09:29:22
+ * @LastEditors: fylih
+ * @LastEditTime: 2021-08-13 15:23:22
+-->
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <!-- 引入样式 -->
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+</head>
+
+<body>
+    <!-- 引入组件库 -->
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14"></script>
+    <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+
+    <div id="app">
+        <div class="container">
+            <div class="dialog" v-if="dialogShow">
+                <span class="dialog_span">恭喜过关!</span>
+                <el-button type="primary" @click="next">下一关</el-button>
+            </div>
+            <div class="box_container">
+                <div v-for="item in boxList" class="box" :style="boxStyle(item)"></div>
+            </div>
+            <div class="img_container" :style="{backgroundImage:randomImage}"></div>
+        </div>
+    </div>
+    <script type="text/javascript">
+        var vm = new Vue({
+            el: '#app',
+            data() {
+                return {
+                    size: 3,
+                    boxList: [],
+                    randomImage: "",
+                    dialogShow: false
+                }
+            },
+            mounted() {
+                this.refresh()
+                this.mousePoint()
+            },
+            methods: {
+                next() {
+                    this.dialogShow = false
+                    this.size++
+                    this.refresh()
+                },
+                refresh() {
+                    this.boxList = []
+                    this.randomImage = `url('./bg/bg${parseInt(Math.random() * 5) + 1}.jpg')`
+                    let length = this.size * this.size
+                    for (let i = 0; i < length; i++) {
+                        this.boxList.push({
+                            id: i,
+                            position: i,
+                        })
+                        if (i === this.size * this.size - 1) {
+                            this.boxList[i].type = "none"
+                        }
+                    }
+                    let container = []
+                    this.boxList.forEach(item => {
+                        getRandom()
+                        function getRandom() {
+                            let _random = parseInt(Math.random() * length)
+                            if (container.some(x => x == _random)) {
+                                getRandom()
+                            } else {
+                                container.push(_random)
+                                item.position = _random
+                            }
+                        }
+                    });
+                    this.boxList.sort((a, b) => {
+                        return a.position - b.position
+                    })
+                    let reverseFlag = this.size % 2
+                    if (this.getReverse(this.boxList) % 2 === reverseFlag) {
+                        this.boxList = []
+                        this.refresh()
+                    }
+                },
+                // 获取逆序对
+                getReverse(arr = []) {
+                    arr = arr.filter(x => x.id < this.size * this.size - 1)
+                    let reverseCount = 0
+                    for (let i = 0; i < arr.length - 1; i++) {
+                        for (let j = i; j < arr.length - 1; j++) {
+                            if (arr[i].id - arr[j + 1].id > 0) {
+                                reverseCount++
+                            }
+                        }
+                    }
+                    return reverseCount
+                },
+                // 鼠标控制方块移动
+                moveBox(position, direction) {
+                    if (direction === 'up') {
+                        if (position < this.size) {
+                            return
+                        } else if (this.boxList[position - this.size].type === 'none') {
+                            this.swap(position, position - this.size);
+                        }
+                    }
+                    if (direction === 'down') {
+                        if (position >= this.size * (this.size - 1)) {
+                            return
+                        } else if (this.boxList[position + this.size].type === 'none') {
+                            this.swap(position, position + this.size);
+                        }
+                    }
+                    if (direction === 'left') {
+                        console.log(position % this.size);
+                        if (position % this.size === 0) {
+                            return
+                        } else if (this.boxList[position - 1].type === 'none') {
+                            this.swap(position, position - 1);
+                        }
+                    }
+                    if (direction === 'right') {
+                        console.log(position % this.size);
+                        if (position % this.size === this.size - 1) {
+                            return
+                        } else if (this.boxList[position + 1].type === 'none') {
+                            this.swap(position, position + 1);
+                        }
+                    }
+                },
+                // 交换方块位置
+                swap(index1, index2) {
+                    [this.boxList[index1].position, this.boxList[index2].position] = [this.boxList[index2].position, this.boxList[index1].position];
+                    [this.boxList[index1], this.boxList[index2]] = [this.boxList[index2], this.boxList[index1]];
+                    this.boxList.push({})
+                    this.boxList.pop()
+                    if (this.boxList.every(x => x.id == x.position)) {
+                        this.dialogShow = true
+                    }
+                },
+                // 鼠标事件
+                mousePoint(e) {
+                    let container = document.getElementsByClassName('box_container')[0]
+                    // 容器上鼠标滑动方向的判断
+                    container.ontouchstart = (e) => {
+                        e.preventDefault();
+                        if (e.target.parentNode.className !== "box_container") return;
+                        // 获取点击的方块的序列
+                        var position = Array.prototype.indexOf.call(
+                            e.target.parentNode.children,
+                            e.target
+                        );
+                        var startX = 0,
+                            startY = 0,
+                            endX = 0,
+                            endY = 0;
+                        startX = e.targetTouches[0].clientX;
+                        startY = e.targetTouches[0].clientY;
+                        container.ontouchend = () => {
+                            container.touchmove = null;
+                        };
+                        container.ontouchmove = (e) => {
+                            // 判断移动方向
+                            endX = e.targetTouches[0].clientX;
+                            endY = e.targetTouches[0].clientY;
+                            if (endX - startX > 5 && endX - startX > Math.abs(endY - startY)) {
+                                this.moveBox(position, "right");
+                                container.ontouchmove = null;
+                            }
+                            if (
+                                endX - startX < -5 &&
+                                Math.abs(endX - startX) > Math.abs(endY - startY)
+                            ) {
+                                this.moveBox(position, "left");
+                                container.ontouchmove = null;
+                            }
+                            if (endY - startY > 5 && endY - startY > Math.abs(endX - startX)) {
+                                this.moveBox(position, "down");
+                                container.ontouchmove = null;
+                            }
+                            if (
+                                endY - startY < -5 &&
+                                Math.abs(endY - startY) > Math.abs(endX - startX)
+                            ) {
+                                this.moveBox(position, "up");
+                                container.ontouchmove = null;
+                            }
+                        };
+                    };
+                },
+                boxStyle(item) {
+                    if (item.type === "none") {
+                        return {
+                            width: (320 / this.size) - 1 + 'px',
+                            height: (320 / this.size) - 1 + 'px',
+                        }
+                    } else {
+                        let row = (item.id % this.size)
+                        let column = parseInt(item.id / this.size)
+                        let backgroundSize = `${this.size * 100 + '%'} ${this.size * 100 + '%'}`
+                        let backgroundPosition = `${row / (this.size - 1) * 100 + '%'} ${column / (this.size - 1) * 100 + '%'}`
+                        return {
+                            width: (320 / this.size) - 1 + 'px',
+                            height: (320 / this.size) - 1 + 'px',
+                            backgroundImage: this.randomImage,
+                            backgroundPosition: backgroundPosition,
+                            backgroundSize: backgroundSize
+                        }
+                    }
+                }
+            }
+        })
+    </script>
+</body>
+<style>
+    .container {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        position: relative;
+    }
+
+    .box_container {
+        width: 320px;
+        height: 100%;
+        display: flex;
+        flex-wrap: wrap;
+        margin: 30px auto;
+    }
+
+
+    .box {
+        margin-bottom: 1px;
+        margin-right: 1px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .img_container {
+        width: 200px;
+        height: 200px;
+        background-position: center center;
+        background-size: 100% 100%;
+        margin-bottom: 30px;
+        margin-left: 10px;
+    }
+
+    .dialog {
+        position: absolute;
+        width: 100%;
+        height: 400px;
+        z-index: 100;
+        background: rgba(204, 196, 196, 0.7);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .dialog_span {
+        font-size: 20px;
+        font-weight: bold;
+        margin-bottom: 20px;
+    }
+</style>
+
+</html>
